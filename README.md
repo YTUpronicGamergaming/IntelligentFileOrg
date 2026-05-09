@@ -46,9 +46,8 @@ A modular, production-ready Python tool that automatically sorts messy directori
 
 ## 🚀 Quick Start
 
-[Download Latest Source Code](https://github.com/YTUpronicGamergaming/IntelligentFileOrg/archive/refs/heads/master.zip)
+[Download Latest Source Code](https://github.com/YTUpronicGamergaming/IntelligentFileOrg/releases/tag/v1.0.0)
 
-[Download Latest Release](https://github.com/YTUpronicGamergaming/IntelligentFileOrg/releases/latest) *Not yet available*
 
 ```bash
 # 1. Clone or download the project
