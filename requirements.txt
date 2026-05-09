@@ -1,0 +1,42 @@
+# =============================================================================
+# Intelligent File Organizer — Python dependencies
+# =============================================================================
+#
+# Install all required + optional packages:
+#   pip install -r requirements.txt
+#
+# Install only what you need:
+#   pip install customtkinter          # GUI only
+#   pip install pyyaml                 # YAML config support only
+#
+# The bootstrap.py auto-installer reads this file and runs the above command
+# automatically when a missing package is detected at startup.
+# =============================================================================
+
+
+# ── GUI (required for --gui mode) ─────────────────────────────────────────────
+customtkinter>=5.2.0          # Modern Tkinter-based GUI framework
+
+
+# ── YAML config support (optional) ────────────────────────────────────────────
+# Only needed if you use a .yaml or .yml config file instead of config.json.
+pyyaml>=6.0
+
+
+# ── Development / testing ──────────────────────────────────────────────────────
+# Not installed by bootstrap.py; install manually for development:
+#   pip install pytest pytest-cov
+#
+# pytest>=7.0
+# pytest-cov>=4.0
+
+
+# ── Future / optional features ────────────────────────────────────────────────
+# Uncomment a line and re-run pip install -r requirements.txt to enable.
+#
+# watchdog>=3.0         # Real-time folder monitoring (Phase 2)
+# sqlalchemy>=2.0       # File history database (Phase 3)
+# pytesseract>=0.3      # OCR for image files (Phase 4 / AI)
+# pillow>=10.0          # Image processing — required by pytesseract
+# openai>=1.0           # OpenAI-powered AI classification plugin (Phase 4)
+# anthropic>=0.20       # Claude-powered AI classification plugin (Phase 4)

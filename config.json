@@ -1,0 +1,115 @@
+{
+  "categories": {
+    "Documents": {
+      "subcategories": {
+        "PDF":   ["pdf"],
+        "DOCX":  ["docx", "doc"],
+        "XLSX":  ["xlsx", "xls", "csv"],
+        "PPTX":  ["pptx", "ppt"],
+        "TXT":   ["txt", "md", "rst"],
+        "Other": []
+      }
+    },
+    "Photos": {
+      "subcategories": {
+        "PNG":   ["png"],
+        "JPG":   ["jpg"],
+        "JPEG":  ["jpeg"],
+        "GIF":   ["gif"],
+        "WEBP":  ["webp"],
+        "SVG":   ["svg"],
+        "BMP":   ["bmp"],
+        "TIFF":  ["tiff", "tif"],
+        "Other": []
+      }
+    },
+    "Videos": {
+      "subcategories": {
+        "MP4":  ["mp4", "m4v"],
+        "MKV":  ["mkv"],
+        "AVI":  ["avi"],
+        "MOV":  ["mov"],
+        "WMV":  ["wmv"],
+        "FLV":  ["flv"],
+        "WEBM": ["webm"],
+        "Other": []
+      }
+    },
+    "Audio": {
+      "subcategories": {
+        "MP3":  ["mp3"],
+        "WAV":  ["wav"],
+        "FLAC": ["flac"],
+        "AAC":  ["aac", "m4a"],
+        "OGG":  ["ogg"],
+        "WMA":  ["wma"],
+        "Other": []
+      }
+    },
+    "Archives": {
+      "subcategories": {
+        "ZIP":  ["zip"],
+        "RAR":  ["rar"],
+        "7Z":   ["7z"],
+        "TAR":  ["tar", "tar.gz", "tgz", "tar.bz2"],
+        "GZ":   ["gz"],
+        "Other": []
+      }
+    },
+    "Code": {
+      "subcategories": {
+        "PY":    ["py", "pyw", "pyx"],
+        "JS":    ["js", "ts", "jsx", "tsx"],
+        "HTML":  ["html", "htm"],
+        "CSS":   ["css", "scss", "sass", "less"],
+        "Java":  ["java", "class", "jar"],
+        "C":     ["c", "h"],
+        "CPP":   ["cpp", "cc", "cxx", "hpp"],
+        "CS":    ["cs"],
+        "PHP":   ["php"],
+        "Ruby":  ["rb"],
+        "Go":    ["go"],
+        "Rust":  ["rs"],
+        "Shell": ["sh", "bash", "zsh", "fish", "bat", "cmd", "ps1"],
+        "SQL":   ["sql"],
+        "JSON":  ["json", "jsonc"],
+        "YAML":  ["yaml", "yml"],
+        "TOML":  ["toml"],
+        "XML":   ["xml"],
+        "Other": []
+      }
+    },
+    "Executables": {
+      "subcategories": {
+        "Windows": ["exe", "msi", "dll", "scr"],
+        "Linux":   ["deb", "rpm", "appimage", "run"],
+        "Mac":     ["dmg", "pkg", "app"],
+        "Other":   []
+      }
+    },
+    "Fonts": {
+      "subcategories": {
+        "TTF":   ["ttf"],
+        "OTF":   ["otf"],
+        "WOFF":  ["woff", "woff2"],
+        "Other": []
+      }
+    }
+  },
+
+  "settings": {
+    "duplicate_strategy": "counter",
+    "recursive": false,
+    "preview_mode": false,
+    "log_to_file": true,
+    "log_filename": "organizer.log",
+    "skip_hidden_files": true,
+    "skip_system_files": true,
+    "system_file_patterns": [".DS_Store", "Thumbs.db", "desktop.ini", ".gitkeep"],
+    "min_file_size_bytes": 0,
+    "max_file_size_mb": null,
+    "uncategorized_folder": "Uncategorized",
+    "exclude_dash_folders": true,
+    "excluded_folder": "Excluded"
+  }
+}
