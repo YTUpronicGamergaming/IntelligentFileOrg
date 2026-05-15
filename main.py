@@ -8,7 +8,7 @@ Quick reference:
   python main.py SOURCE_DIR [OPTIONS]
   python main.py --gui
 """
-
+from __future__ import annotations
 # ---------------------------------------------------------------------------
 # Bootstrap must be the very first import — before anything that could fail.
 # It detects missing packages and auto-installs them, then re-launches.
@@ -19,7 +19,7 @@ bootstrap.ensure()
 # ---------------------------------------------------------------------------
 # Standard library imports (safe after bootstrap)
 # ---------------------------------------------------------------------------
-from __future__ import annotations
+
 
 import argparse
 import sys
