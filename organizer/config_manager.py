@@ -15,6 +15,13 @@ v1.1 additions
   excluded (move them whole instead of scanning their contents).
 - excluded_folder : str  — name of the top-level destination folder for excluded
   directories (default: "Excluded").
+
+v1.1.0 additions
+----------------
+- AppMetadata dataclass — carries app name, version, and GitHub release URLs.
+  Parsed from the top-level "app" block in config.json and exposed on
+  OrganizerConfig so the version_controller can read it without re-parsing
+  the file.
 """
 
 from __future__ import annotations
@@ -23,6 +30,45 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+
+# ---------------------------------------------------------------------------
+# App metadata dataclass  (v1.1.0)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AppMetadata:
+    """
+    Typed representation of the top-level 'app' block in config.json.
+
+    This is the single source of truth for version and GitHub release info.
+    The version_controller module reads these values rather than hard-coding
+    anything.
+    """
+
+    name: str = "Intelligent File Organizer"
+    version: str = "1.1.0"
+    github_repo: str = "YTUpronicGamergaming/IntelligentFileOrg"
+    github_releases_url: str = (
+        "https://github.com/YTUpronicGamergaming/IntelligentFileOrg/releases"
+    )
+    github_api_latest: str = (
+        "https://api.github.com/repos/"
+        "YTUpronicGamergaming/IntelligentFileOrg/releases/latest"
+    )
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AppMetadata":
+        """Build from a raw dict, ignoring unknown keys."""
+        known = set(cls.__dataclass_fields__)  # type: ignore[attr-defined]
+        filtered = {k: v for k, v in data.items() if k in known}
+        return cls(**filtered)
+
+    @property
+    def version_tag(self) -> str:
+        """Return the version with a leading 'v' prefix (e.g. 'v1.1.0')."""
+        v = self.version
+        return v if v.startswith("v") else f"v{v}"
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +142,7 @@ class OrganizerConfig:
 
     categories: Dict[str, Dict[str, Any]]
     settings: OrganizerSettings
+    app_metadata: AppMetadata = field(default_factory=AppMetadata)
 
     # Derived lookup: extension (lowercase) → (category, subcategory)
     extension_map: Dict[str, tuple[str, str]] = field(default_factory=dict)
@@ -143,9 +190,14 @@ class ConfigManager:
     def load(self) -> OrganizerConfig:
         """Parse the config file and return a fully resolved OrganizerConfig."""
         raw = self._read_file()
-        categories = raw.get("categories", {})
-        settings = OrganizerSettings.from_dict(raw.get("settings", {}))
-        return OrganizerConfig(categories=categories, settings=settings)
+        categories    = raw.get("categories", {})
+        settings      = OrganizerSettings.from_dict(raw.get("settings", {}))
+        app_metadata  = AppMetadata.from_dict(raw.get("app", {}))
+        return OrganizerConfig(
+            categories=categories,
+            settings=settings,
+            app_metadata=app_metadata,
+        )
 
     # ------------------------------------------------------------------
     # Internal helpers

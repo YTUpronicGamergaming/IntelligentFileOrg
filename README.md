@@ -10,69 +10,72 @@ A modular, production-ready Python tool that automatically sorts messy directori
 
 ## ✨ Features
 
-| Feature                                         | Status           |
-| ----------------------------------------------- | ---------------- |
-| Extension-based categorization                  | ✅                |
-| MIME-type fallback                              | ✅                |
-| Duplicate handling (counter / timestamp / skip) | ✅                |
-| Preview / dry-run mode                          | ✅                |
-| Recursive directory scanning                    | ✅                |
-| Dash-folder exclusion system (`-FolderName`)    | ✅                |
-| Folder-preserving moves                         | ✅                |
-| JSON & YAML config files                        | ✅                |
-| Structured logging (console + rotating file)    | ✅                |
-| Automatic dependency bootstrapper               | ✅                |
-| GUI toggle support                              | ✅                |
-| CLI toggle support                              | ✅                |
-| Custom categorization plugins                   | ✅                |
-| AI classification hook                          | 🔜 plug-in ready |
-| Real-time folder monitoring (watchdog)          | 🔜               |
-| SQLite file history database                    | 🔜               |
-| GUI (CustomTkinter)                             | 🔜 / in progress |
+| Feature                                             | Status                |
+| --------------------------------------------------- | --------------------- |
+| Extension-based categorization                      | ✅                     |
+| MIME-type fallback                                  | ✅                     |
+| Duplicate handling (counter / timestamp / skip)     | ✅                     |
+| Preview / dry-run mode                              | ✅                     |
+| Recursive directory scanning                        | ✅                     |
+| Dash-folder exclusion (`-FolderName` → `Excluded/`) | ✅                     |
+| JSON & YAML config files                            | ✅                     |
+| Structured logging (console + rotating file)        | ✅                     |
+| Custom categorization plugins                       | ✅                     |
+| Dependency auto-installer (bootstrap)               | ✅                     |
+| CustomTkinter GUI                                   | ✅                     |
+| Version management & update notifications           | ✅                     |
+| CLI update notice (startup check)                   | ✅                     |
+| GUI update dialog (non-blocking, background)        | ✅                     |
+| AI classification hook                              | 🔜 plug-in ready      |
+| Real-time folder monitoring (watchdog)              | 🔜 Phase 2            |
+| SQLite file history database                        | 🔜 Phase 3            |
+| AI / OCR smart sorting                              | 🔜 Phase 4 (optional) |
+| EXE auto-updater                                    | 🔜 Future             |
 
 ---
 
 ## 🚀 Why Use It?
 
 * ⚡ Organize thousands of files in minutes
-* 🛡️ Protect important folders with dash-folder exclusion
-* 👀 Preview changes before moving anything
-* 🧠 Built for future AI-powered classification
-* 🖥️ Includes both CLI and modern CustomTkinter GUI support
-* 🔄 Automatically installs missing dependencies
-* 📂 Keeps special folders intact instead of breaking them apart
+* 🛡️ Protect important grouped folders automatically
+* 👀 Preview all actions before moving files
+* 🖥️ Use either CLI or modern GUI mode
+* 🔄 Automatic dependency installation support
+* 🧠 Built for future AI-powered organization
+* 📂 Prevent accidental folder scattering
 
 ---
 
 ## 🚀 Quick Start
 
-[Download Latest Source Code](https://github.com/YTUpronicGamergaming/IntelligentFileOrg/releases/tag/v1.0.0)
+### Download Latest Release
 
+[Download Latest Source Code](https://github.com/YTUpronicGamergaming/IntelligentFileOrg/releases/tag/v1.1.0)
 
 ```bash
-# 1. Clone or download the project
+# 1. Clone / download the project
 git clone https://github.com/YTUpronicGamergaming/IntelligentFileOrg.git
 
 cd intelligent_file_organizer
 
-# 2. (Optional) Create a virtual environment
-python -m venv venv
+# 2. (Optional) Create virtual environment
+py -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
 
 # 4. Preview what will happen — no files moved
-python main.py /path/to/your/folder --preview
+py main.py /path/to/your/downloads --preview
 
 # 5. Run for real
-python main.py /path/to/your/folder
+py main.py /path/to/your/downloads
 
-# 6. Run with dash-folder exclusion disabled
-python main.py /path/to/your/folder --no-exclude-dash-folders
+# 6. Organise into a separate output folder
+py main.py ~/Downloads --output ~/Organized
 
-# 7. Launch the GUI
-python gui.py
+# 7. Launch GUI
+py main.py --gui
 ```
 
 If required dependencies are missing, the built-in bootstrapper can automatically install them from `requirements.txt` and retry execution automatically.
@@ -82,47 +85,40 @@ If required dependencies are missing, the built-in bootstrapper can automaticall
 ## 📖 CLI Reference
 
 ```bash
-python main.py SOURCE_DIR [OPTIONS]
+py main.py SOURCE_DIR [OPTIONS]
 ```
 
 ### Options
 
 * `--output, -o DIR`
-  Output directory. Defaults to `SOURCE_DIR`.
+  Output directory (defaults to SOURCE_DIR)
 
 * `--config, -c FILE`
-  Custom JSON or YAML config file.
+  Custom JSON or YAML config file
 
 * `--preview, -p`
-  Dry-run mode: show planned moves without executing them.
+  Dry-run: show planned moves without executing
 
 * `--recursive, -r`
-  Scan subdirectories recursively.
-
-* `--ignore-dash-folders / --no-exclude-dash-folders`
-  Controls whether folders beginning with `-` are excluded from recursive scanning and moved as intact folders instead.
-  Default: enabled.
+  Scan subdirectories recursively
 
 * `--duplicate-strategy`
-  `counter | timestamp | skip` (default: `counter`)
+  `counter | timestamp | skip`
 
 * `--no-log-file`
-  Console-only logging.
+  Console-only logging
 
 * `--log-file FILE`
-  Custom log file path.
+  Custom log file path
 
 * `--verbose, -v`
-  Enable DEBUG output.
+  Enable DEBUG output
 
-### Examples
+* `--no-exclude-dash-folders`
+  Disable dash-folder exclusion and scan `-Folders` normally
 
-```bash
-python main.py ~/Downloads --preview
-python main.py ~/Downloads --output ~/Organized
-python main.py ~/Downloads --no-exclude-dash-folders
-python main.py ~/Downloads --recursive
-```
+* `--gui`
+  Launch CustomTkinter GUI
 
 ---
 
@@ -130,151 +126,109 @@ python main.py ~/Downloads --recursive
 
 ```text
 intelligent_file_organizer/
+
 │
-├── main.py                    ← CLI entry point (argparse)
-├── gui.py                     ← CustomTkinter GUI entry point
-├── bootstrap.py               ← Optional dependency bootstrapper
-├── config.json                ← Default extension mappings & settings
+├── main.py                    ← CLI entry point (argparse + update notice)
+├── gui.py                     ← CustomTkinter GUI (update dialog, log panel)
+├── bootstrap.py               ← Dependency auto-installer
+├── config.json                ← Extension mappings, settings, app metadata
 ├── requirements.txt
 │
-└── organizer/                 ← Core library (importable as a package)
-    ├── __init__.py            ← Exports FileOrganizer
-    ├── core.py                ← Façade orchestrator — wires everything together
-    ├── config_manager.py      ← JSON/YAML config loading → OrganizerConfig
-    ├── logger.py              ← Shared logger (console + rotating file)
-    ├── scanner.py             ← Directory traversal → FileInfo / DashFolderInfo
-    ├── categorizer.py         ← Extension/MIME classification + plugin system
-    ├── duplicate_handler.py   ← Conflict resolution strategies
-    └── mover.py               ← File/folder I/O, preview mode, move history
-
+└── organizer/
+    ├── __init__.py
+    ├── core.py
+    ├── config_manager.py
+    ├── version_controller.py
+    ├── logger.py
+    ├── scanner.py
+    ├── categorizer.py
+    ├── duplicate_handler.py
+    └── mover.py
 
 tests/
-    └── test_organizer.py      ← Unit + integration tests (pytest)
+    └── test_organizer.py
 ```
-
-### Data flow
-
-```text
-main.py / gui.py / your code
-       │
-       ▼
- FileOrganizer.run()                ← core.py (façade)
-       │
-       ├─ DirectoryScanner.scan()    ← scanner.py
-       │      ├─ yields FileInfo
-       │      └─ yields DashFolderInfo for excluded dash-folders
-       │
-       ├─ Categorizer.categorize()   ← categorizer.py
-       │      └─ extension map → MIME fallback → custom plugins
-       │
-       ├─ DuplicateHandler.resolve() ← duplicate_handler.py
-       │
-       └─ FileMover.move()           ← mover.py
-              ├─ move_file()
-              └─ move_folder()
-```
-
-### How dash-folders flow through the pipeline
-
-Folders whose names begin with `-` are treated as protected/excluded folders when dash-folder exclusion is enabled.
-
-* They are not recursively scanned
-* Their contents are not categorized individually
-* The folder is moved intact as a whole
-* The move destination uses the configured excluded-folder target
-
-This keeps private or special-purpose folders together while still organizing the rest of the directory normally.
 
 ---
 
-## 📁 Folder Organization Logic
+## 🔄 Update Notifications
 
-Files are sorted into category and subcategory folders based on extension or MIME type.
+The app automatically checks GitHub releases for newer versions.
 
-Example input:
+### Features
+
+* Background update checking
+* GUI update dialog
+* CLI startup notification
+* Semantic version comparison
+* Silent offline fallback
+* Non-blocking GUI behavior
+
+### GUI Behavior
+
+When a new version is available:
+
+* Shows current vs latest version
+* Provides:
+
+  * **[Update Now]**
+  * **[Later]**
+* Opens GitHub releases page directly
+
+### CLI Example
 
 ```text
-DIR/
-├── random.pdf
-├── image1.png
-├── notes.docx
-├── -Personal/
-│   ├── private.docx
-│   └── notes.txt
+🔔 UPDATE AVAILABLE
+
+Current Version : v1.1.0
+Latest Version  : v1.2.0
+
+Download:
+https://github.com/YTUpronicGamergaming/IntelligentFileOrg/releases
 ```
 
-Example output:
+### Future Plans
 
-```text
-Organized/
-├── Documents/
-│   ├── PDF/
-│   │   └── random.pdf
-│   └── DOCX/
-│       └── notes.docx
-├── Photos/
-│   └── PNG/
-│       └── image1.png
-└── Excluded/
-    └── -Personal/
-        ├── private.docx
-        └── notes.txt
-```
+Planned future support includes:
+
+* Automatic `.exe` downloads
+* In-app updater
+* Silent updates
+* Rollback support
 
 ---
 
 ## 🚫 Excluded Dash Folders
 
-One of the biggest problems with automatic organizers is that they can accidentally tear apart folders you intentionally grouped together.
+Folders beginning with `-` are treated as protected folders.
 
-This project solves that problem using protected dash-folders.
-
-Folders beginning with `-` are treated as protected folders when dash-folder exclusion is enabled.
-
-### Examples
+Examples:
 
 * `-Personal`
 * `-Archive`
-* `-Old Files`
+* `-School`
 
-### Behavior
+Behavior:
 
 * excluded from recursive scanning
-* contents remain untouched during organization
-* moved as intact folders instead of being broken apart
-* configurable in GUI, CLI, and `config.json`
+* contents remain untouched internally
+* moved intact as complete folders
+* configurable in GUI, CLI, and config
 
-### Why this exists
-
-This makes it easy to keep special folders together while still allowing the organizer to sort the rest of the directory.
-
-### Safety benefit
-
-A dash-folder is treated as a folder-level unit, which reduces the chance of accidentally scattering files that were meant to stay grouped together.
+This prevents important grouped folders from being accidentally scattered during organization.
 
 ---
 
 ## ⚙️ Configuration
 
-Edit `config.json` to add or remap file types:
-
 ```json
 {
-  "categories": {
-    "Documents": {
-      "subcategories": {
-        "PDF": ["pdf"],
-        "DOCX": ["docx", "doc"],
-        "TXT": ["txt", "md"]
-      }
-    },
-    "Photos": {
-      "subcategories": {
-        "PNG": ["png"],
-        "JPG": ["jpg", "jpeg"]
-      }
-    }
+  "app": {
+    "name": "Intelligent File Organizer",
+    "version": "1.1.0",
+    "github_repo": "YTUpronicGamergaming/IntelligentFileOrg"
   },
+
   "settings": {
     "duplicate_strategy": "counter",
     "recursive": false,
@@ -287,49 +241,7 @@ Edit `config.json` to add or remap file types:
 }
 ```
 
-### Setting reference
-
-* `duplicate_strategy` — how filename collisions are handled
-* `recursive` — whether subfolders are scanned
-* `preview_mode` — show planned actions without moving files
-* `skip_hidden_files` — ignore hidden files when scanning
-* `exclude_dash_folders` — treat `-FolderName` folders as excluded and move them intact
-* `excluded_folder_name` — destination folder used for excluded dash-folders
-* `uncategorized_folder` — destination for files that do not match any rule
-
-YAML format is also supported — just name your file `config.yaml`.
-
----
-
-## 🔌 Adding AI / Custom Plugins
-
-The categorizer has a plugin system. Implement `CategoryPlugin` to add custom logic — AI models, content inspection, OCR, or metadata-based rules.
-
-```python
-from organizer.categorizer import CategoryPlugin
-from organizer.scanner import FileInfo
-
-
-class MyAIPlugin(CategoryPlugin):
-    name = "my_ai_classifier"
-
-    def categorize(self, file_info: FileInfo):
-        if self._is_receipt(file_info):
-            return ("Finance", "Receipts")
-        return None
-
-    def _is_receipt(self, fi: FileInfo) -> bool:
-        ...
-
-
-from organizer import FileOrganizer
-
-organizer = FileOrganizer(source_dir="~/Downloads")
-organizer.register_plugin(MyAIPlugin())
-organizer.run()
-```
-
-Plugins are tried after extension and MIME lookups fail, so they add minimal overhead for already-known file types.
+YAML format is also supported.
 
 ---
 
@@ -337,105 +249,71 @@ Plugins are tried after extension and MIME lookups fail, so they add minimal ove
 
 ```bash
 # All tests
-python -m pytest tests/ -v
+py -m pytest tests/ -v
 
-# With coverage report
-python -m pytest tests/ --cov=organizer --cov-report=term-missing
-
-# Single test class
-python -m pytest tests/test_organizer.py::TestEndToEnd -v
+# Coverage
+py -m pytest tests/ --cov=organizer --cov-report=term-missing
 ```
-
----
-
-## 🛠️ Automatic Dependency Installation
-
-No more confusing `ModuleNotFoundError` crashes during first launch.
-
-The project includes a lightweight bootstrap system that automatically detects missing packages, installs dependencies from `requirements.txt`, and relaunches the application safely.
-
-The project includes a bootstrap pattern for missing dependency handling.
-
-### What it does
-
-* detects `ModuleNotFoundError`
-* attempts to install dependencies from `requirements.txt`
-* retries execution after installation
-* avoids infinite install loops
-* shows clear logs if installation fails
-
-### Notes
-
-* This is meant as a convenience layer for first-run setup
-* In production or controlled environments, pre-install dependencies manually when possible
-* Keep `requirements.txt` reviewed and pinned as needed for stability
-
----
-
-## 🖥️ GUI Recommendations
-
-| Option                | Pros                           | Cons                               | Verdict       |
-| --------------------- | ------------------------------ | ---------------------------------- | ------------- |
-| **Tkinter**           | Built-in, no install           | Basic look                         | Skip          |
-| **CustomTkinter**     | Modern look, easy, pure Python | Less flexible than full frameworks | ✅ Best for v1 |
-| **PyQt6**             | Very powerful, native feel     | Steeper learning curve             | Good for v2   |
-| **Electron + Python** | Web-tech UI                    | Heavy and complex                  | Overkill      |
-
-CustomTkinter gives the project a modern desktop look with a manageable codebase and good cross-platform support.
 
 ---
 
 ## 🛣️ Development Roadmap
 
-### Phase 1 — Core
+### Phase 1 — Core ✅
 
 * [x] Extension + MIME categorization
-* [x] Duplicate handling (3 strategies)
-* [x] Preview mode
+* [x] Duplicate handling
 * [x] Recursive scanning
-* [x] Dash-folder exclusion support
-* [x] Configurable via JSON/YAML
+* [x] Preview mode
+* [x] Dash-folder exclusion
 * [x] Plugin architecture
-* [x] Core test suite
+* [x] Dependency bootstrapper
 
-### Phase 2 — Real-time Monitoring
+### Phase 1.1 — GUI & Versioning ✅
 
-* [ ] `watchdog`-based folder watcher
-* [ ] Background daemon / system service
-* [ ] Windows Task Scheduler / macOS launchd integration
+* [x] CustomTkinter GUI
+* [x] Version controller
+* [x] GUI update dialog
+* [x] CLI update notifications
+* [x] Semantic version comparison
+
+### Phase 2 — Monitoring
+
+* [ ] Real-time folder watcher
+* [ ] Background monitoring service
+* [ ] Task Scheduler integration
 
 ### Phase 3 — Database & History
 
-* [ ] SQLite schema for file history
-* [ ] Track original locations → enable undo
+* [ ] SQLite history database
+* [ ] Undo system
 * [ ] File metadata indexing
-* [ ] Full-text search
+* [ ] Search system
 
-### Phase 4 — AI Features
+### Phase 4 — AI Features (Optional)
 
-* [ ] Document content analysis (receipts, invoices, contracts)
-* [ ] OCR for scanned image files (`pytesseract`)
-* [ ] LLM-based semantic tagging
-* [ ] Smart folder suggestions based on usage patterns
+* [ ] OCR support
+* [ ] Receipt/document detection
+* [ ] AI semantic tagging
+* [ ] Smart suggestions
 
-### Phase 5 — GUI
+### Phase 5 — EXE Auto-Updater
 
-* [ ] CustomTkinter desktop UI
-* [ ] Sidebar navigation
-* [ ] Drag-and-drop source folder selection
-* [ ] Progress bar and log view
-* [ ] Move history table with undo support
+* [ ] Silent `.exe` updates
+* [ ] In-app updater UI
+* [ ] Rollback support
+* [ ] Scheduled update checks
 
 ---
 
 ## 🔒 Security Considerations
 
-* The organizer does not delete files; it moves them.
-* Always run with `--preview` first on important directories.
-* Use `--output` to keep source and destination separate for extra safety.
-* Dash-folders are handled as intact folder units when exclusion is enabled.
-* Automatic dependency installation is a convenience feature and should be used with care.
-* No network connections are made by the core organizer modules.
+* The organizer never deletes files — it only moves them.
+* Always run `--preview` first on important directories.
+* Dash-folders are handled as intact folder units.
+* File permissions are preserved by `shutil.move`.
+* The update checker only makes a small HTTPS request to GitHub releases.
+* No local file data is uploaded or transmitted.
 
 ---
 

@@ -59,6 +59,7 @@ _REQ_PATH = Path(__file__).parent / "requirements.txt"
 # condition_to_check is a callable that returns True when the package is
 # actually needed — lets us skip GUI deps for pure CLI runs.
 _PACKAGES: Dict[str, Tuple[str, object]] = {
+    "packaging":     ("packaging",     lambda: True),               # version comparison — always needed
     "customtkinter": ("customtkinter", lambda: "--gui" in sys.argv),
     "pyyaml":        ("yaml",          lambda: _yaml_config_requested()),
 }

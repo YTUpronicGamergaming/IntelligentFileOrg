@@ -97,6 +97,14 @@
     }
   },
 
+  "app": {
+    "name":                 "Intelligent File Organizer",
+    "version":              "1.1.0",
+    "github_repo":          "YTUpronicGamergaming/IntelligentFileOrg",
+    "github_releases_url":  "https://github.com/YTUpronicGamergaming/IntelligentFileOrg/releases",
+    "github_api_latest":    "https://api.github.com/repos/YTUpronicGamergaming/IntelligentFileOrg/releases/latest"
+  },
+
   "settings": {
     "duplicate_strategy": "counter",
     "recursive": false,

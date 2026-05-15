@@ -14,6 +14,10 @@
 # =============================================================================
 
 
+# ── Version management (required) ─────────────────────────────────────────────
+packaging>=23.0               # Semantic version comparison (Version controller)
+
+
 # ── GUI (required for --gui mode) ─────────────────────────────────────────────
 customtkinter>=5.2.0          # Modern Tkinter-based GUI framework
 

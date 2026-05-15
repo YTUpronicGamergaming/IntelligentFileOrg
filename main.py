@@ -1,14 +1,15 @@
-#!/usr/bin/env python3
+#!/usr/bin/env py3
 """
 main.py — Intelligent File Organizer CLI
 =========================================
 Run with no arguments (or --help / -h) to see the full usage guide.
 
 Quick reference:
-  python main.py SOURCE_DIR [OPTIONS]
-  python main.py --gui
+  py main.py SOURCE_DIR [OPTIONS]
+  py main.py --gui
 """
 from __future__ import annotations
+
 # ---------------------------------------------------------------------------
 # Bootstrap must be the very first import — before anything that could fail.
 # It detects missing packages and auto-installs them, then re-launches.
@@ -19,7 +20,6 @@ bootstrap.ensure()
 # ---------------------------------------------------------------------------
 # Standard library imports (safe after bootstrap)
 # ---------------------------------------------------------------------------
-
 
 import argparse
 import sys
@@ -109,17 +109,17 @@ FLAG_GROUPS = [
 
 EXAMPLES = [
     ("Preview only — no files are moved",
-     "python main.py ~/Downloads --preview"),
+     "py main.py ~/Downloads --preview"),
     ("Organise into a separate folder",
-     "python main.py ~/Downloads --output ~/Organized"),
+     "py main.py ~/Downloads --output ~/Organized"),
     ("Recursive scan + timestamp on duplicates",
-     "python main.py ~/Downloads -r --duplicate-strategy timestamp"),
+     "py main.py ~/Downloads -r --duplicate-strategy timestamp"),
     ("Disable dash-folder exclusion (scan -Folders normally)",
-     "python main.py ~/Downloads --no-exclude-dash-folders"),
+     "py main.py ~/Downloads --no-exclude-dash-folders"),
     ("Custom config, verbose, no log file",
-     "python main.py ~/Downloads --config my_rules.json -v --no-log-file"),
+     "py main.py ~/Downloads --config my_rules.json -v --no-log-file"),
     ("Open the graphical interface",
-     "python main.py --gui"),
+     "py main.py --gui"),
 ]
 
 KIND_LABEL = {
@@ -146,8 +146,8 @@ def print_help() -> None:
     print()
 
     print(_c("USAGE", _WHITE, _BOLD))
-    print(f"  python main.py {_c('SOURCE_DIR', _CYAN)} [OPTIONS]")
-    print(f"  python main.py {_c('--gui', _MAGENTA)}")
+    print(f"  py main.py {_c('SOURCE_DIR', _CYAN)} [OPTIONS]")
+    print(f"  py main.py {_c('--gui', _MAGENTA)}")
     print()
 
     print(_c("FLAGS & OPTIONS", _WHITE, _BOLD))
@@ -187,6 +187,72 @@ def print_help() -> None:
     print(_c("  Tip: always run --preview first on important directories.", _YELLOW))
     print(_c("  See README.md for full documentation and plugin guide.", _DIM))
     print()
+
+
+# ---------------------------------------------------------------------------
+# Update notification (CLI)
+# ---------------------------------------------------------------------------
+
+def _print_update_notice(local: str, latest: str, release_url: str) -> None:
+    """
+    Print a clean, non-intrusive update banner to the terminal.
+
+    Called only when a newer version is confirmed available. Formatted to
+    stand out without being alarming — uses a box-drawing border and the
+    project's standard yellow accent colour.
+    """
+    w = 58
+    print()
+    print(_c("┌" + "─" * w + "┐", _YELLOW))
+    print(_c("│" + "  🔔  UPDATE AVAILABLE ".ljust(w) + "│", _YELLOW))
+    print(_c("├" + "─" * w + "┤", _YELLOW))
+    print(
+        _c("│", _YELLOW)
+        + f"  Current version : {_c(local,  _DIM)}"
+        .ljust(w + (len(local)  - len(_c(local,  _DIM)) if sys.stdout.isatty() else 0))
+        + _c("│", _YELLOW)
+    )
+    print(
+        _c("│", _YELLOW)
+        + f"  Latest version  : {_c(latest, _GREEN)}"
+        .ljust(w + (len(latest) - len(_c(latest, _GREEN)) if sys.stdout.isatty() else 0))
+        + _c("│", _YELLOW)
+    )
+    print(_c("├" + "─" * w + "┤", _YELLOW))
+    print(
+        _c("│", _YELLOW)
+        + f"  Download : {_c(release_url, _CYAN)}"
+        .ljust(w + (len(release_url) - len(_c(release_url, _CYAN)) if sys.stdout.isatty() else 0))
+        + _c("│", _YELLOW)
+    )
+    print(_c("└" + "─" * w + "┘", _YELLOW))
+    print()
+
+
+def _run_cli_update_check() -> None:
+    """
+    Check for updates and print a notice if a newer version exists.
+
+    Runs synchronously with a short network timeout so it never meaningfully
+    delays startup. Fails silently on any error (offline, DNS failure, etc.).
+    """
+    try:
+        from organizer.config_manager import load_config
+        from organizer.version_controller import VersionController
+
+        cfg = load_config()
+        vc  = VersionController(cfg)
+        result = vc.check()
+
+        if result.available and result.latest:
+            _print_update_notice(
+                local=result.local_tag,
+                latest=result.latest_tag,
+                release_url=result.release_url,
+            )
+    except Exception:
+        # Fail completely silently — update check must never interrupt the run
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -289,6 +355,10 @@ def main() -> int:
 
     import logging
     from organizer import FileOrganizer
+
+    # Check for updates non-intrusively — prints a box if newer version found,
+    # silently skips if offline or any error occurs.
+    _run_cli_update_check()
 
     # Build constructor kwargs
     kwargs: dict = {

@@ -15,15 +15,24 @@ Architecture
 OrganizerApp (CTk)
   ├── HeaderFrame       — Logo, title, theme toggle
   ├── SidebarFrame      — All settings (paths, options, strategy)
-  │     ├── PathSection     source / output folder pickers
-  │     ├── OptionsSection  preview, recursive, verbose toggles
-  │     └── StrategySection duplicate strategy radio buttons
+  │     ├── PathSection       source / output folder pickers
+  │     ├── OptionsSection    preview, recursive, verbose, log + dash-folder toggles
+  │     └── StrategySection   duplicate strategy radio buttons
   ├── LogFrame          — Scrollable live log output
   └── FooterFrame       — Run button, progress bar, status label
 
 The organizer runs in a background thread so the UI stays responsive.
 Log messages are piped from the organizer's logging system into the
 GUI log panel via a thread-safe queue.
+
+v1.1 changes
+------------
+- "Exclude dash-folders" switch added to Options section (default: ON).
+  When enabled, directories starting with '-' are moved intact to Excluded/.
+  When disabled, they are treated as normal directories.
+- `exclude_dash` setting is read from `get_settings()` and passed to
+  FileOrganizer in the background worker thread.
+- ResultsDialog shows "Excluded folders" row when any were processed.
 """
 
 from __future__ import annotations
@@ -43,22 +52,22 @@ import customtkinter as ctk
 # ---------------------------------------------------------------------------
 
 APP_TITLE   = "Intelligent File Organizer"
-APP_VERSION = "v1.0.0"
-WIN_W, WIN_H = 960, 680
+APP_VERSION = "v1.1.0"
+WIN_W, WIN_H = 960, 700
 SIDEBAR_W    = 320
 CORNER       = 10
 PAD          = 16
 SMALL_PAD    = 8
 
-# Map logging levels to tag colours used in the log panel
 LOG_COLORS = {
-    "INFO":     "#4ade80",   # green
-    "DEBUG":    "#60a5fa",   # blue
-    "WARNING":  "#facc15",   # yellow
-    "ERROR":    "#f87171",   # red
-    "CRITICAL": "#e879f9",   # magenta
-    "PREVIEW":  "#67e8f9",   # cyan — custom prefix
+    "INFO":     "#4ade80",
+    "DEBUG":    "#60a5fa",
+    "WARNING":  "#facc15",
+    "ERROR":    "#f87171",
+    "CRITICAL": "#e879f9",
+    "PREVIEW":  "#67e8f9",
     "MOVED":    "#4ade80",
+    "EXCLUDED": "#a78bfa",   # purple — for dash-folder moves
     "SKIP":     "#facc15",
 }
 
@@ -67,11 +76,11 @@ ctk.set_default_color_theme("blue")
 
 
 # ---------------------------------------------------------------------------
-# Queue-based logging handler (thread-safe bridge → GUI)
+# Queue-based logging handler
 # ---------------------------------------------------------------------------
 
 class _QueueHandler(logging.Handler):
-    """Pushes log records into a queue so the GUI thread can consume them."""
+    """Pushes log records into a queue for the GUI thread to consume."""
 
     def __init__(self, log_queue: queue.Queue) -> None:
         super().__init__()
@@ -82,11 +91,11 @@ class _QueueHandler(logging.Handler):
 
 
 # ---------------------------------------------------------------------------
-# Reusable section card widget
+# Section card widget
 # ---------------------------------------------------------------------------
 
 class _SectionCard(ctk.CTkFrame):
-    """A rounded card with a bold section title and content area."""
+    """A rounded card with a bold section title and a content area."""
 
     def __init__(self, parent, title: str, **kwargs):
         super().__init__(parent, corner_radius=CORNER, **kwargs)
@@ -101,7 +110,8 @@ class _SectionCard(ctk.CTkFrame):
         ).grid(row=0, column=0, padx=PAD, pady=(PAD, 4), sticky="ew")
 
         self._content = ctk.CTkFrame(self, fg_color="transparent")
-        self._content.grid(row=1, column=0, padx=SMALL_PAD, pady=(0, PAD), sticky="nsew")
+        self._content.grid(row=1, column=0, padx=SMALL_PAD,
+                           pady=(0, PAD), sticky="nsew")
         self._content.grid_columnconfigure(0, weight=1)
 
     @property
@@ -118,7 +128,6 @@ class HeaderFrame(ctk.CTkFrame):
         super().__init__(parent, height=56, corner_radius=0, **kwargs)
         self.grid_columnconfigure(1, weight=1)
 
-        # Icon + title
         ctk.CTkLabel(
             self,
             text="🗂️  " + APP_TITLE,
@@ -126,7 +135,6 @@ class HeaderFrame(ctk.CTkFrame):
             anchor="w",
         ).grid(row=0, column=0, padx=PAD, pady=PAD, sticky="w")
 
-        # Version badge
         ctk.CTkLabel(
             self,
             text=APP_VERSION,
@@ -134,21 +142,19 @@ class HeaderFrame(ctk.CTkFrame):
             text_color=("gray50", "gray60"),
         ).grid(row=0, column=1, padx=0, pady=PAD, sticky="w")
 
-        # Theme toggle
         self._theme_btn = ctk.CTkButton(
             self,
             text="☀  Light",
-            width=88,
-            height=30,
-            corner_radius=8,
-            fg_color="transparent",
-            border_width=1,
+            width=88, height=30, corner_radius=8,
+            fg_color="transparent", border_width=1,
             command=on_theme_toggle,
         )
         self._theme_btn.grid(row=0, column=2, padx=PAD, pady=PAD)
 
     def update_theme_label(self, mode: str) -> None:
-        self._theme_btn.configure(text="☀  Light" if mode == "dark" else "🌙  Dark")
+        self._theme_btn.configure(
+            text="☀  Light" if mode == "dark" else "🌙  Dark"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -179,10 +185,9 @@ class SidebarFrame(ctk.CTkScrollableFrame):
                      font=ctk.CTkFont(size=12)).grid(
             row=0, column=0, columnspan=2, sticky="w", pady=(0, 2))
         self.source_var = ctk.StringVar()
-        self._source_entry = ctk.CTkEntry(
-            c, textvariable=self.source_var, placeholder_text="Select folder…",
-            height=34)
-        self._source_entry.grid(row=1, column=0, sticky="ew", padx=(0, 4))
+        ctk.CTkEntry(c, textvariable=self.source_var,
+                     placeholder_text="Select folder…", height=34).grid(
+            row=1, column=0, sticky="ew", padx=(0, 4))
         ctk.CTkButton(c, text="Browse", width=64, height=34,
                       command=self._pick_source).grid(row=1, column=1)
 
@@ -191,13 +196,11 @@ class SidebarFrame(ctk.CTkScrollableFrame):
                      font=ctk.CTkFont(size=12)).grid(
             row=2, column=0, columnspan=2, sticky="w", pady=(10, 2))
         self.output_var = ctk.StringVar()
-        self._output_entry = ctk.CTkEntry(
-            c, textvariable=self.output_var,
-            placeholder_text="Defaults to source (in-place)", height=34)
-        self._output_entry.grid(row=3, column=0, sticky="ew", padx=(0, 4))
+        ctk.CTkEntry(c, textvariable=self.output_var,
+                     placeholder_text="Defaults to source (in-place)",
+                     height=34).grid(row=3, column=0, sticky="ew", padx=(0, 4))
         ctk.CTkButton(c, text="Browse", width=64, height=34,
                       command=self._pick_output).grid(row=3, column=1)
-
         c.grid_columnconfigure(0, weight=1)
 
     def _pick_source(self):
@@ -216,34 +219,62 @@ class SidebarFrame(ctk.CTkScrollableFrame):
         card = self._add_card("⚙️   Options")
         c = card.content
 
-        self.preview_var   = ctk.BooleanVar(value=True)
-        self.recursive_var = ctk.BooleanVar(value=False)
-        self.verbose_var   = ctk.BooleanVar(value=False)
-        self.logfile_var   = ctk.BooleanVar(value=True)
+        self.preview_var      = ctk.BooleanVar(value=True)
+        self.recursive_var    = ctk.BooleanVar(value=False)
+        self.verbose_var      = ctk.BooleanVar(value=False)
+        self.logfile_var      = ctk.BooleanVar(value=True)
+        self.exclude_dash_var = ctk.BooleanVar(value=True)   # v1.1
 
         options = [
-            (self.preview_var,   "Preview mode",
-             "Show planned moves without touching files"),
-            (self.recursive_var, "Recursive scan",
-             "Include files in subdirectories"),
-            (self.verbose_var,   "Verbose logging",
-             "Show DEBUG-level messages in the log"),
-            (self.logfile_var,   "Write log file",
-             "Save log to organizer.log alongside source"),
+            (
+                self.preview_var,
+                "Preview mode",
+                "Show planned moves without touching files",
+                None,
+            ),
+            (
+                self.recursive_var,
+                "Recursive scan",
+                "Include files in subdirectories",
+                None,
+            ),
+            (
+                self.exclude_dash_var,
+                "Exclude dash-folders  (-Name)",
+                "Move folders starting with '-' intact → Excluded/",
+                "#a78bfa",  # purple accent to match log colour
+            ),
+            (
+                self.verbose_var,
+                "Verbose logging",
+                "Show DEBUG-level messages in the log panel",
+                None,
+            ),
+            (
+                self.logfile_var,
+                "Write log file",
+                "Save log to organizer.log alongside source",
+                None,
+            ),
         ]
 
-        for i, (var, label, tooltip) in enumerate(options):
+        for i, (var, label, tooltip, accent) in enumerate(options):
             row_frame = ctk.CTkFrame(c, fg_color="transparent")
-            row_frame.grid(row=i, column=0, sticky="ew", pady=2)
+            row_frame.grid(row=i, column=0, sticky="ew", pady=3)
             row_frame.grid_columnconfigure(1, weight=1)
 
             ctk.CTkSwitch(
                 row_frame, text="", variable=var, width=44, height=22,
-            ).grid(row=0, column=0, padx=(0, 8))
+                progress_color=accent or "#1f6aa5",
+            ).grid(row=0, column=0, padx=(0, 8), rowspan=2)
 
+            label_kw = {}
+            if accent:
+                label_kw["text_color"] = accent
             ctk.CTkLabel(
                 row_frame, text=label, anchor="w",
                 font=ctk.CTkFont(size=13, weight="bold"),
+                **label_kw,
             ).grid(row=0, column=1, sticky="w")
 
             ctk.CTkLabel(
@@ -274,18 +305,13 @@ class SidebarFrame(ctk.CTkScrollableFrame):
             row.grid_columnconfigure(1, weight=1)
 
             ctk.CTkRadioButton(
-                row,
-                text="",
-                variable=self.strategy_var,
-                value=value,
-                width=24,
+                row, text="", variable=self.strategy_var, value=value, width=24,
             ).grid(row=0, column=0, rowspan=2, padx=(0, 8))
 
             ctk.CTkLabel(
                 row, text=label, anchor="w",
                 font=ctk.CTkFont(size=13, weight="bold"),
             ).grid(row=0, column=1, sticky="w")
-
             ctk.CTkLabel(
                 row, text=subtitle, anchor="w",
                 font=ctk.CTkFont(size=11),
@@ -302,11 +328,11 @@ class SidebarFrame(ctk.CTkScrollableFrame):
         c.grid_columnconfigure(0, weight=1)
 
         self.config_var = ctk.StringVar()
-        entry = ctk.CTkEntry(
+        ctk.CTkEntry(
             c, textvariable=self.config_var,
             placeholder_text="Uses built-in config.json by default",
-            height=34)
-        entry.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+            height=34,
+        ).grid(row=0, column=0, sticky="ew", padx=(0, 4))
         ctk.CTkButton(c, text="Browse", width=64, height=34,
                       command=self._pick_config).grid(row=0, column=1)
 
@@ -322,22 +348,25 @@ class SidebarFrame(ctk.CTkScrollableFrame):
 
     def _add_card(self, title: str) -> _SectionCard:
         card = _SectionCard(self, title=title)
-        card.grid(row=self._row, column=0, padx=SMALL_PAD, pady=(0, SMALL_PAD), sticky="ew")
+        card.grid(row=self._row, column=0, padx=SMALL_PAD,
+                  pady=(0, SMALL_PAD), sticky="ew")
         self._row += 1
         return card
 
     # ── Public getters ─────────────────────────────────────────────────────
 
     def get_settings(self) -> dict:
+        """Return all current setting values as a plain dict."""
         return {
-            "source":    self.source_var.get().strip(),
-            "output":    self.output_var.get().strip(),
-            "config":    self.config_var.get().strip(),
-            "preview":   self.preview_var.get(),
-            "recursive": self.recursive_var.get(),
-            "verbose":   self.verbose_var.get(),
-            "log_file":  self.logfile_var.get(),
-            "strategy":  self.strategy_var.get(),
+            "source":        self.source_var.get().strip(),
+            "output":        self.output_var.get().strip(),
+            "config":        self.config_var.get().strip(),
+            "preview":       self.preview_var.get(),
+            "recursive":     self.recursive_var.get(),
+            "verbose":       self.verbose_var.get(),
+            "log_file":      self.logfile_var.get(),
+            "strategy":      self.strategy_var.get(),
+            "exclude_dash":  self.exclude_dash_var.get(),   # v1.1
         }
 
 
@@ -359,21 +388,13 @@ class LogFrame(ctk.CTkFrame):
         title_bar.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
-            title_bar,
-            text="📋  Log",
-            font=ctk.CTkFont(size=13, weight="bold"),
-            anchor="w",
+            title_bar, text="📋  Log",
+            font=ctk.CTkFont(size=13, weight="bold"), anchor="w",
         ).grid(row=0, column=0, sticky="w")
 
         ctk.CTkButton(
-            title_bar,
-            text="Clear",
-            width=56,
-            height=26,
-            corner_radius=6,
-            fg_color="transparent",
-            border_width=1,
-            command=self.clear,
+            title_bar, text="Clear", width=56, height=26, corner_radius=6,
+            fg_color="transparent", border_width=1, command=self.clear,
         ).grid(row=0, column=2)
 
         # Textbox
@@ -385,20 +406,19 @@ class LogFrame(ctk.CTkFrame):
         )
         self._box.grid(row=1, column=0, sticky="nsew", padx=PAD, pady=PAD)
 
-        # Configure colour tags
+        # Colour tags
         for level, color in LOG_COLORS.items():
             self._box._textbox.tag_configure(level, foreground=color)
-        self._box._textbox.tag_configure("DIM", foreground="#6b7280")
+        self._box._textbox.tag_configure("DIM",  foreground="#6b7280")
         self._box._textbox.tag_configure("BOLD", font=("Courier", 12, "bold"))
 
     def append(self, message: str, level: str = "INFO") -> None:
-        """Append a log line, colour-coded by level keyword found in message."""
         self._box.configure(state="normal")
 
-        # Detect the keyword to apply the right colour tag
         tag = "INFO"
+        upper = message.upper()
         for key in LOG_COLORS:
-            if f"[{key}]" in message or key in message.upper():
+            if f"[{key}]" in upper or key in upper:
                 tag = key
                 break
 
@@ -430,9 +450,7 @@ class FooterFrame(ctk.CTkFrame):
         self._run_btn = ctk.CTkButton(
             self,
             text="▶   Run Organizer",
-            width=160,
-            height=40,
-            corner_radius=CORNER,
+            width=160, height=40, corner_radius=CORNER,
             font=ctk.CTkFont(size=14, weight="bold"),
             command=on_run,
         )
@@ -443,12 +461,10 @@ class FooterFrame(ctk.CTkFrame):
         self._progress.grid(row=0, column=1, padx=PAD, pady=PAD, sticky="ew")
 
         self._status = ctk.CTkLabel(
-            self,
-            text="Ready.",
+            self, text="Ready.",
             font=ctk.CTkFont(size=12),
             text_color=("gray40", "gray60"),
-            width=200,
-            anchor="e",
+            width=200, anchor="e",
         )
         self._status.grid(row=0, column=2, padx=PAD, pady=PAD)
 
@@ -464,42 +480,67 @@ class FooterFrame(ctk.CTkFrame):
             self._progress.set(1)
 
     def set_status(self, text: str, color: str = "") -> None:
-        self._status.configure(text=text, text_color=color or ("gray40", "gray60"))
+        self._status.configure(
+            text=text,
+            text_color=color or ("gray40", "gray60"),
+        )
 
 
 # ---------------------------------------------------------------------------
-# Results summary overlay
+# Results summary dialog
 # ---------------------------------------------------------------------------
 
 class ResultsDialog(ctk.CTkToplevel):
-    """Modal-style window shown after a run completes."""
+    """Modal window shown after a run completes."""
 
     def __init__(self, parent, result, **kwargs):
         super().__init__(parent, **kwargs)
         self.title("Run Complete")
-        self.geometry("400x320")
+        self.geometry("420x380")
         self.resizable(False, False)
-        self.grab_set()   # Modal
+        self.grab_set()
         self.lift()
 
-        mode = "PREVIEW" if result.preview_mode else "LIVE"
+        mode  = "PREVIEW" if result.preview_mode else "LIVE"
         color = "#67e8f9" if result.preview_mode else "#4ade80"
+        icon  = "🔍" if result.preview_mode else "✅"
 
         ctk.CTkLabel(
             self,
-            text=f"{'🔍' if result.preview_mode else '✅'}  {mode} Run Complete",
+            text=f"{icon}  {mode} Run Complete",
             font=ctk.CTkFont(size=18, weight="bold"),
             text_color=color,
         ).pack(pady=(24, 8))
 
+        # Build stats rows
+        if result.preview_mode:
+            file_label = "Would move (files)"
+            file_count = str(result.previewed)
+        else:
+            file_label = "Files moved"
+            file_count = str(result.moved)
+
         stats = [
-            ("Files processed", str(result.total)),
-            ("Moved" if not result.preview_mode else "Would move",
-             str(result.moved + result.previewed)),
-            ("Skipped (duplicate)",   str(result.skipped)),
-            ("Errors",                str(result.errors)),
-            ("Time",                  f"{result.elapsed_seconds:.2f}s"),
+            ("Files processed",      str(result.total)),
+            (file_label,             file_count),
+            ("Skipped (duplicate)",  str(result.skipped)),
+            ("File errors",          str(result.errors)),
         ]
+
+        if result.total_folders > 0:
+            folder_label = (
+                "Dash-folders would move"
+                if result.preview_mode
+                else "Dash-folders moved"
+            )
+            stats += [
+                (folder_label,          str(result.folders_previewed
+                                            if result.preview_mode
+                                            else result.folders_moved)),
+                ("Folder errors",       str(result.folders_errored)),
+            ]
+
+        stats.append(("Time", f"{result.elapsed_seconds:.2f}s"))
 
         table = ctk.CTkFrame(self, corner_radius=CORNER)
         table.pack(padx=24, pady=8, fill="x")
@@ -509,18 +550,120 @@ class ResultsDialog(ctk.CTkToplevel):
             row = ctk.CTkFrame(table, fg_color=row_color, corner_radius=0)
             row.pack(fill="x")
             row.grid_columnconfigure(1, weight=1)
-            ctk.CTkLabel(row, text=label, anchor="w",
-                         font=ctk.CTkFont(size=12)).grid(
-                row=0, column=0, padx=12, pady=6, sticky="w")
-            val_color = "#f87171" if label == "Errors" and value != "0" else ""
-            ctk.CTkLabel(row, text=value, anchor="e",
-                         font=ctk.CTkFont(size=12, weight="bold"),
-                         text_color=val_color or ("gray10", "gray90")).grid(
-                row=0, column=1, padx=12, pady=6, sticky="e")
+
+            ctk.CTkLabel(
+                row, text=label, anchor="w",
+                font=ctk.CTkFont(size=12),
+            ).grid(row=0, column=0, padx=12, pady=6, sticky="w")
+
+            is_error_row = "error" in label.lower()
+            val_color = "#f87171" if is_error_row and value != "0" else ""
+            ctk.CTkLabel(
+                row, text=value, anchor="e",
+                font=ctk.CTkFont(size=12, weight="bold"),
+                text_color=val_color or ("gray10", "gray90"),
+            ).grid(row=0, column=1, padx=12, pady=6, sticky="e")
 
         ctk.CTkButton(
             self, text="Close", width=120, height=36, command=self.destroy
         ).pack(pady=16)
+
+
+# ---------------------------------------------------------------------------
+# Update notification dialog  (v1.1.0)
+# ---------------------------------------------------------------------------
+
+class UpdateDialog(ctk.CTkToplevel):
+    """
+    Non-blocking modal popup shown when a newer release is available on GitHub.
+
+    Displayed automatically ~2 seconds after the GUI starts (giving the layout
+    time to settle) if an update is confirmed. Does not show on network errors
+    or when already up-to-date.
+
+    Buttons
+    -------
+    [Update Now]  — opens the GitHub releases page in the default browser.
+    [Later]       — dismisses the dialog; the app continues normally.
+    """
+
+    def __init__(self, parent, result, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.title("Update Available")
+        self.geometry("460x300")
+        self.resizable(False, False)
+        self.grab_set()
+        self.lift()
+        self.focus_force()
+
+        self._release_url = result.release_url
+
+        # ── Icon + heading ────────────────────────────────────────────────
+        ctk.CTkLabel(
+            self,
+            text="🔔  Update Available",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="#facc15",
+        ).pack(pady=(28, 4))
+
+        ctk.CTkLabel(
+            self,
+            text="A newer version of Intelligent File Organizer is available.",
+            font=ctk.CTkFont(size=12),
+            text_color=("gray40", "gray70"),
+        ).pack(pady=(0, 16))
+
+        # ── Version comparison card ───────────────────────────────────────
+        card = ctk.CTkFrame(self, corner_radius=10)
+        card.pack(padx=28, pady=(0, 16), fill="x")
+
+        rows = [
+            ("Installed version", result.local_tag,  ("gray30", "gray75")),
+            ("Latest version",    result.latest_tag, "#4ade80"),
+        ]
+        for i, (label, value, color) in enumerate(rows):
+            row_bg = ("gray88", "gray20") if i % 2 == 0 else ("gray83", "gray17")
+            row = ctk.CTkFrame(card, fg_color=row_bg, corner_radius=0)
+            row.pack(fill="x")
+            row.grid_columnconfigure(1, weight=1)
+            ctk.CTkLabel(
+                row, text=label, anchor="w", font=ctk.CTkFont(size=12),
+            ).grid(row=0, column=0, padx=14, pady=8, sticky="w")
+            ctk.CTkLabel(
+                row, text=value, anchor="e",
+                font=ctk.CTkFont(size=12, weight="bold"),
+                text_color=color,
+            ).grid(row=0, column=1, padx=14, pady=8, sticky="e")
+
+        # ── Buttons ───────────────────────────────────────────────────────
+        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        btn_frame.pack(pady=(0, 20))
+
+        ctk.CTkButton(
+            btn_frame,
+            text="🌐  Update Now",
+            width=150, height=38,
+            corner_radius=8,
+            fg_color="#16a34a",
+            hover_color="#15803d",
+            command=self._open_releases,
+        ).grid(row=0, column=0, padx=8)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="Later",
+            width=100, height=38,
+            corner_radius=8,
+            fg_color="transparent",
+            border_width=1,
+            command=self.destroy,
+        ).grid(row=0, column=1, padx=8)
+
+    def _open_releases(self) -> None:
+        """Open the GitHub releases page in the default browser and close."""
+        import webbrowser
+        webbrowser.open(self._release_url)
+        self.destroy()
 
 
 # ---------------------------------------------------------------------------
@@ -535,7 +678,7 @@ class OrganizerApp(ctk.CTk):
 
         self.title(APP_TITLE)
         self.geometry(f"{WIN_W}x{WIN_H}")
-        self.minsize(720, 520)
+        self.minsize(720, 540)
 
         self._mode = "dark"
         self._log_queue: queue.Queue = queue.Queue()
@@ -545,12 +688,20 @@ class OrganizerApp(ctk.CTk):
         self._install_log_handler()
         self._poll_log_queue()
 
-        # Welcome message
+        # Welcome banner in log panel
         self._log.append_separator()
         self._log.append(f"  {APP_TITLE} {APP_VERSION}  —  Ready.", "INFO")
         self._log.append("  Select a source folder and press Run.", "INFO")
         self._log.append("  Tip: keep Preview Mode ON for your first run.", "INFO")
+        self._log.append(
+            "  Dash-folders (-Personal, -Archive …) are moved intact → Excluded/.",
+            "EXCLUDED",
+        )
         self._log.append_separator()
+
+        # Kick off a background update check after the UI has fully settled.
+        # 2-second delay lets the layout render before any dialog appears.
+        self.after(2000, self._check_for_updates_async)
 
     # ── Layout ─────────────────────────────────────────────────────────────
 
@@ -558,27 +709,73 @@ class OrganizerApp(ctk.CTk):
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
-        # Header (full width)
         self._header = HeaderFrame(
-            self, on_theme_toggle=self._toggle_theme,
+            self,
+            on_theme_toggle=self._toggle_theme,
             fg_color=("gray85", "gray17"),
         )
         self._header.grid(row=0, column=0, columnspan=2, sticky="ew")
 
-        # Sidebar
         self._sidebar = SidebarFrame(self, fg_color=("gray90", "gray14"))
         self._sidebar.grid(row=1, column=0, sticky="nsew")
 
-        # Log panel
         self._log = LogFrame(self, fg_color=("gray95", "gray11"))
-        self._log.grid(row=1, column=1, sticky="nsew", padx=(0, 0))
+        self._log.grid(row=1, column=1, sticky="nsew")
 
-        # Footer (full width)
         self._footer = FooterFrame(
-            self, on_run=self._on_run,
+            self,
+            on_run=self._on_run,
             fg_color=("gray85", "gray17"),
         )
         self._footer.grid(row=2, column=0, columnspan=2, sticky="ew")
+
+    # ── Update checker (v1.1.0) ────────────────────────────────────────────
+
+    def _check_for_updates_async(self) -> None:
+        """
+        Start a daemon thread that calls VersionController.check() and then
+        marshals the result back to the main thread via self.after().
+
+        Called once, ~2 seconds after app startup. Any exception in the
+        thread is silently swallowed so it can never affect the running app.
+        """
+        try:
+            from organizer.config_manager import load_config
+            from organizer.version_controller import VersionController
+
+            cfg = load_config()
+            vc  = VersionController(cfg)
+
+            def _callback(result):
+                # Marshal back to the Tk main thread before touching widgets
+                self.after(0, self._on_update_check_done, result)
+
+            vc.check_async(_callback)
+
+        except Exception:
+            pass  # Missing packaging, config error, etc. — always silent
+
+    def _on_update_check_done(self, result) -> None:
+        """
+        Called on the main thread when the background update check finishes.
+
+        Shows UpdateDialog if a newer version is available; logs a dim note
+        if already up-to-date; silently ignores failures.
+        """
+        try:
+            if result.available:
+                self._log.append(
+                    f"  🔔 Update available: {result.local_tag} → {result.latest_tag}",
+                    "WARNING",
+                )
+                UpdateDialog(self, result)
+            elif result.checked:
+                self._log.append(
+                    f"  ✓ Up to date  ({result.local_tag})", "DEBUG"
+                )
+            # If not checked (offline/error), log nothing — silent fail
+        except Exception:
+            pass
 
     # ── Theme ──────────────────────────────────────────────────────────────
 
@@ -590,25 +787,27 @@ class OrganizerApp(ctk.CTk):
     # ── Logging bridge ─────────────────────────────────────────────────────
 
     def _install_log_handler(self):
-        """Attach a queue handler to the organizer's root logger."""
         handler = _QueueHandler(self._log_queue)
         handler.setFormatter(
-            logging.Formatter("%(asctime)s  %(levelname)-8s  %(message)s",
-                              datefmt="%H:%M:%S")
+            logging.Formatter(
+                "%(asctime)s  %(levelname)-8s  %(message)s",
+                datefmt="%H:%M:%S",
+            )
         )
         root = logging.getLogger("file_organizer")
         root.addHandler(handler)
         root.setLevel(logging.DEBUG)
 
     def _poll_log_queue(self):
-        """Drain the log queue every 50 ms on the main thread (Tk-safe)."""
+        """Drain the log queue every 50 ms — must run on the main thread."""
+        fmt = logging.Formatter(
+            "%(asctime)s  %(levelname)-8s  %(message)s",
+            datefmt="%H:%M:%S",
+        )
         try:
             while True:
                 record = self._log_queue.get_nowait()
-                msg = logging.Formatter(
-                    "%(asctime)s  %(levelname)-8s  %(message)s",
-                    datefmt="%H:%M:%S",
-                ).format(record)
+                msg = fmt.format(record)
                 self._log.append(msg, record.levelname)
         except queue.Empty:
             pass
@@ -637,22 +836,29 @@ class OrganizerApp(ctk.CTk):
         self._log.append_separator()
 
         mode_label = "PREVIEW" if settings["preview"] else "LIVE"
-        self._log.append(f"  Starting {mode_label} run…", "INFO")
+        dash_label = (
+            "  [dash-folders: excluded → Excluded/]"
+            if settings["exclude_dash"]
+            else "  [dash-folders: scanning normally]"
+        )
+        self._log.append(f"  Starting {mode_label} run…{dash_label}", "INFO")
 
-        thread = threading.Thread(target=self._run_worker, args=(settings,), daemon=True)
-        thread.start()
+        threading.Thread(
+            target=self._run_worker, args=(settings,), daemon=True
+        ).start()
 
     def _run_worker(self, settings: dict):
-        """Runs in a background thread — never touches Tkinter widgets directly."""
+        """Background thread — never touches Tkinter widgets directly."""
         import logging as _logging
         from organizer import FileOrganizer
 
         try:
             kwargs = {
-                "source_dir":   settings["source"],
-                "preview_mode": settings["preview"],
-                "recursive":    settings["recursive"],
-                "log_to_file":  settings["log_file"],
+                "source_dir":         settings["source"],
+                "preview_mode":       settings["preview"],
+                "recursive":          settings["recursive"],
+                "log_to_file":        settings["log_file"],
+                "exclude_dash_folders": settings["exclude_dash"],   # v1.1
             }
             if settings["output"]:
                 kwargs["output_dir"] = settings["output"]
@@ -666,7 +872,6 @@ class OrganizerApp(ctk.CTk):
             organizer._config.settings.duplicate_strategy = settings["strategy"]
             result = organizer.run()
 
-            # Schedule UI update back on main thread
             self.after(0, self._on_run_complete, result)
 
         except Exception as exc:
@@ -677,15 +882,23 @@ class OrganizerApp(ctk.CTk):
         self._running = False
         self._footer.set_running(False)
 
-        if result.errors:
+        total_errors = result.errors + result.folders_errored
+
+        if total_errors:
             self._footer.set_status(
-                f"Done — {result.errors} error(s).", "#f87171")
+                f"Done — {total_errors} error(s).", "#f87171")
         elif result.preview_mode:
+            moved = result.previewed
+            folders = result.folders_previewed
+            extra = f" + {folders} folder(s)" if folders else ""
             self._footer.set_status(
-                f"Preview complete — {result.previewed} file(s) would move.", "#67e8f9")
+                f"Preview — {moved} file(s){extra} would move.", "#67e8f9")
         else:
+            moved = result.moved
+            folders = result.folders_moved
+            extra = f" + {folders} folder(s)" if folders else ""
             self._footer.set_status(
-                f"Done — {result.moved} file(s) moved.", "#4ade80")
+                f"Done — {moved} file(s){extra} moved.", "#4ade80")
 
         self._log.append_separator()
         ResultsDialog(self, result)
